@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Admin Portal - CloudShare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ADMIN LOGIN SCREEN -->
+  <div id="adminLoginScreen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-3.5 sm:p-4">
+    <div class="bg-white rounded-2xl p-5 sm:p-8 w-full max-w-sm sm:max-w-md shadow-2xl border border-gray-100">
+      <div class="text-center mb-5 sm:mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-indigo-100 text-indigo-600 mb-2.5 sm:mb-3 text-xl sm:text-2xl">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Admin Authentication</h2>
+        <p class="text-[11px] sm:text-xs text-gray-500 mt-1">Enter your credentials & Admin Secret Key to access.</p>
+      </div>
+
+      <form onsubmit="handleAdminLogin(event)" class="space-y-3.5 sm:space-y-4">
+        <div>
+          <label class="block text-[11px] font-semibold uppercase text-gray-600 mb-1">Admin Email</label>
+          <input type="email" id="admEmail" required placeholder="admin@example.com" class="w-full border px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase text-gray-600 mb-1">Password</label>
+          <input type="password" id="admPassword" minlength="6" required placeholder="••••••••" class="w-full border px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase text-indigo-600 mb-1">
+            <i class="fa-solid fa-key mr-1"></i> Admin Secret Key
+          </label>
+          <input type="password" id="admSecretKey" required placeholder="Enter Secret Master Key" class="w-full border border-indigo-200 bg-indigo-50/30 px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          <span class="text-[10px] sm:text-[11px] text-gray-400 mt-1 block">Default Key: <code class="text-indigo-600 font-bold">ADMIN@2026</code></span>
+        </div>
+        
+        <button type="submit" id="admBtn" class="w-full bg-indigo-600 active:bg-indigo-800 text-white py-2.5 rounded-lg font-semibold text-xs sm:text-sm hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-sm">
+          <span>Authorize & Enter</span>
+        </button>
+      </form>
+
+      <div class="mt-4 sm:mt-5 text-center">
+        <a href="index.html" class="text-xs text-gray-500 hover:text-indigo-600 transition">← Back to Main Site</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="adminDashboard" class="hidden min-h-screen flex flex-col">
+    <header class="bg-slate-900 text-white px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex justify-between items-center shadow-md sticky top-0 z-40">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <span class="bg-indigo-600 text-[10px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded font-bold uppercase tracking-wider">Admin</span>
+        <h1 class="text-sm sm:text-lg font-bold truncate max-w-[130px] sm:max-w-none">Dashboard</h1>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3 text-xs">
+        <button onclick="toggleMaintenance()" id="maintBtn" class="px-2.5 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-gray-700 text-gray-300">
+          <i class="fa-solid fa-power-off"></i> <span id="maintText">Maint: OFF</span>
+        </button>
+        <a href="index.html" class="bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded text-xs transition flex items-center gap-1">
+          <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">View Site</span>
+        </a>
+        <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-700 active:bg-red-800 px-2.5 py-1.5 rounded text-xs transition font-medium">Logout</button>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-3.5 sm:px-4 py-4 sm:py-8 flex-1 w-full">
+      <!-- Analytics Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg"><i class="fa-solid fa-folder"></i></div>
+          <div>
+            <span class="text-[11px] text-gray-500 font-semibold block uppercase">Total Files</span>
+            <span id="statTotalFiles" class="text-base sm:text-xl font-bold text-gray-800">0</span>
+          </div>
+        </div>
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center text-lg"><i class="fa-solid fa-download"></i></div>
+          <div>
+            <span class="text-[11px] text-gray-500 font-semibold block uppercase">Downloads</span>
+            <span id="statTotalDownloads" class="text-base sm:text-xl font-bold text-gray-800">0</span>
+          </div>
+        </div>
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-users"></i></div>
+          <div>
+            <span class="text-[11px] text-gray-500 font-semibold block uppercase">Total Users</span>
+            <span id="statTotalUsers" class="text-base sm:text-xl font-bold text-gray-800">0</span>
+          </div>
+        </div>
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-lg"><i class="fa-solid fa-paper-plane"></i></div>
+          <div>
+            <span class="text-[11px] text-gray-500 font-semibold block uppercase">Requests</span>
+            <span id="statTotalRequests" class="text-base sm:text-xl font-bold text-gray-800">0</span>
+          </div>
+        </div>
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3 col-span-2 lg:col-span-1">
+          <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-lg"><i class="fa-solid fa-flag"></i></div>
+          <div>
+            <span class="text-[11px] text-gray-500 font-semibold block uppercase">Reports</span>
+            <span id="statTotalReports" class="text-base sm:text-xl font-bold text-gray-800">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex border-b border-gray-300 gap-4 sm:gap-6 mb-4 sm:mb-8 overflow-x-auto whitespace-nowrap text-xs sm:text-sm">
+        <button onclick="switchTab('fileTab')" id="tabBtn-fileTab" class="pb-2.5 sm:pb-3 border-b-2 border-indigo-600 font-semibold text-indigo-600 flex-shrink-0">
+          <i class="fa-solid fa-file-arrow-up mr-1"></i> Manage Files
+        </button>
+        <button onclick="switchTab('requestTab')" id="tabBtn-requestTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-inbox mr-1"></i> File Requests
+        </button>
+        <button onclick="switchTab('catTab')" id="tabBtn-catTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-tags mr-1"></i> Categories
+        </button>
+        <button onclick="switchTab('reportsTab')" id="tabBtn-reportsTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i> Dead Link Reports
+        </button>
+        <button onclick="switchTab('noticeTab')" id="tabBtn-noticeTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-bullhorn mr-1"></i> Notice Board
+        </button>
+        <button onclick="switchTab('adsTab')" id="tabBtn-adsTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-rectangle-ad mr-1"></i> Ads Manager
+        </button>
+        <button onclick="switchTab('userTab')" id="tabBtn-userTab" class="pb-2.5 sm:pb-3 border-b-2 border-transparent text-gray-500 font-semibold flex-shrink-0 hover:text-indigo-600">
+          <i class="fa-solid fa-users mr-1"></i> Users
+        </button>
+      </div>
+
+      <!-- Tab 1: Manage Files -->
+      <section id="fileTab" class="tab-pane">
+        <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 mb-6 sm:mb-8 shadow-sm">
+          <h2 class="text-sm sm:text-base font-bold mb-3 sm:mb-4 text-gray-800" id="fileFormHeading">Post New Resource</h2>
+          <form id="fileForm" onsubmit="handlePostSubmit(event)" class="space-y-3.5 sm:space-y-4">
+            <input type="hidden" id="editKey" value="">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Title</label>
+                <input type="text" id="fileTitle" required class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500" placeholder="e.g. Portfolio Template / Project Plan">
+              </div>
+              <div>
+                <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Category</label>
+                <select id="fileCategory" required class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500"></select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">
+                  File Size <span class="text-[10px] text-indigo-500 font-normal lowercase">(Auto-fetched on upload)</span>
+                </label>
+                <input type="text" id="fileSize" placeholder="e.g. 150 KB, 1.2 MB" class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Format Badge</label>
+                <input type="text" id="fileFormat" placeholder="e.g. HTML, ZIP, PDF" class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500 uppercase">
+              </div>
+            </div>
+
+            <div class="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-semibold text-emerald-800">
+                <input type="checkbox" id="fileIsVerified" class="w-4 h-4 text-emerald-600 rounded">
+                <span>Enable "100% Virus Free / Verified Safe" Badge</span>
+              </label>
+              <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+            </div>
+
+            <!-- Thumbnail Upload -->
+            <div>
+              <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">
+                Thumbnail Cover Photo (Upload Image or Enter URL)
+              </label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="file" id="fileThumbBinary" accept="image/*" class="w-full sm:w-1/2 border px-2 py-1.5 rounded-lg text-xs bg-gray-50">
+                <input type="url" id="fileThumbUrl" placeholder="Or paste image URL" class="w-full sm:w-1/2 border px-3 py-2 rounded-lg text-xs outline-none focus:border-indigo-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Source Type</label>
+              <div class="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-1">
+                <label class="flex items-center gap-2 text-xs sm:text-sm cursor-pointer">
+                  <input type="radio" name="sourceType" value="link" checked onchange="toggleSourceType()"> Cloud Link (Drive/Telegram)
+                </label>
+                <label class="flex items-center gap-2 text-xs sm:text-sm cursor-pointer">
+                  <input type="radio" name="sourceType" value="storage_upload" onchange="toggleSourceType()"> Direct File Upload (Supabase Storage)
+                </label>
+              </div>
+            </div>
+
+            <div id="linkField">
+              <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Primary Download URL (Server 1)</label>
+              <input type="url" id="fileUrl" placeholder="https://drive.google.com/..." class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500">
+            </div>
+
+            <div id="storageUploadField" class="hidden bg-indigo-50/30 p-3 rounded-lg border border-indigo-100">
+              <label class="block text-[11px] sm:text-xs font-semibold text-indigo-700 uppercase mb-1">Select File (.html, .zip, .pdf, docs)</label>
+              <input type="file" id="serverFileBinary" onchange="handleFileSelectAuto(this)" class="w-full border bg-white px-3 py-2 rounded-lg text-xs sm:text-sm">
+              <span id="filePreservedStatus" class="text-[11px] text-emerald-600 font-semibold mt-1 hidden block">
+                <i class="fa-solid fa-check-circle"></i> Existing file is preserved on cloud storage. (Only select if you want to replace it)
+              </span>
+              <span class="text-[10px] text-gray-500 mt-1 block">Uploaded directly to your Supabase Cloud Storage bucket (No PHP server required).</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] sm:text-xs font-semibold text-indigo-600 uppercase mb-1">
+                <i class="fa-solid fa-server mr-1"></i> Backup Mirror URL (Server 2 - Optional)
+              </label>
+              <input type="url" id="fileMirrorUrl" placeholder="https://t.me/... or backup link" class="w-full border border-indigo-200 bg-indigo-50/20 px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-[11px] sm:text-xs font-semibold text-gray-600 uppercase mb-1">Description / Notes</label>
+              <textarea id="fileDesc" rows="3" placeholder="Description or instructions..." class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500"></textarea>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button type="submit" id="submitBtn" class="bg-indigo-600 text-white px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition">Save & Publish</button>
+              <button type="button" onclick="resetFileForm()" class="bg-gray-200 text-gray-700 px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold hover:bg-gray-300">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm min-w-[550px]">
+            <thead class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs uppercase font-bold">
+              <tr>
+                <th class="p-3">Title</th>
+                <th class="p-3">Category</th>
+                <th class="p-3">Badge & Size</th>
+                <th class="p-3">Downloads</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="filesTableBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tab 2: File Requests -->
+      <section id="requestTab" class="tab-pane hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm min-w-[600px]">
+            <thead class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs uppercase font-bold">
+              <tr>
+                <th class="p-3">Requested Resource</th>
+                <th class="p-3">Notes</th>
+                <th class="p-3">Requested By</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="requestsTableBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tab 3: Categories -->
+      <section id="catTab" class="tab-pane hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm h-fit">
+            <h3 class="font-bold text-sm sm:text-base mb-3 text-gray-800">Add Category</h3>
+            <div class="flex gap-2">
+              <input type="text" id="newCatName" placeholder="e.g. HTML Templates, Web Tools" class="border px-3 py-2 rounded-lg text-xs sm:text-sm w-full outline-none focus:border-indigo-500">
+              <button onclick="addCategory()" class="bg-indigo-600 text-white px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold hover:bg-indigo-700 whitespace-nowrap">Add</button>
+            </div>
+          </div>
+          <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-sm sm:text-base mb-3 text-gray-800">All Categories</h3>
+            <ul id="categoriesList" class="divide-y divide-gray-100"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: Dead Link Reports -->
+      <section id="reportsTab" class="tab-pane hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm min-w-[550px]">
+            <thead class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs uppercase font-bold">
+              <tr>
+                <th class="p-3">Reported File</th>
+                <th class="p-3">Issue Reason</th>
+                <th class="p-3">Reported By</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tab 5: Notice Board -->
+      <section id="noticeTab" class="tab-pane hidden">
+        <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm max-w-xl">
+          <h3 class="font-bold text-sm sm:text-base mb-3 text-gray-800">Announcement Banner</h3>
+          <form onsubmit="handleNoticeSubmit(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Notice Text</label>
+              <textarea id="noticeInput" rows="3" placeholder="Notice text..." class="w-full border px-3 py-2 rounded-lg text-xs sm:text-sm outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer text-xs sm:text-sm">
+              <input type="checkbox" id="noticeEnable" class="w-4 h-4 text-indigo-600 rounded">
+              <span>Display Notice on Site</span>
+            </label>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold hover:bg-indigo-700">Save Notice</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Tab 6: Ads Manager (Adsterra) -->
+      <section id="adsTab" class="tab-pane hidden">
+        <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm max-w-xl">
+          <div class="flex items-center justify-between mb-4 border-b pb-3">
+            <div>
+              <h3 class="font-bold text-sm sm:text-base text-gray-800">Adsterra Ad Settings</h3>
+              <p class="text-[11px] text-gray-400">Control your Direct Link & Social Bar scripts</p>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-indigo-700">
+              <input type="checkbox" id="adsterraActive" class="w-4 h-4 text-indigo-600 rounded">
+              <span>Enable All Ads</span>
+            </label>
+          </div>
+
+          <form onsubmit="saveAdsterraSettings(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Adsterra Direct Link (Smartlink)
+              </label>
+              <input type="url" id="adsterraDirectLink" placeholder="https://whomeenee.com/4/xxxxxxx" class="w-full border px-3 py-2 rounded-lg text-xs outline-none focus:border-indigo-500">
+              <span class="text-[10px] text-gray-400 mt-1 block">ডাউনলোড বাটনে ক্লিক করলে এই লিংকটি নতুন ট্যাবে ওপেন হবে।</span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Social Bar (In-Page Push) Script Tag
+              </label>
+              <textarea id="adsterraSocialBar" rows="3" placeholder='<script type="text/javascript" src="//..."></script>' class="w-full font-mono text-xs border p-2.5 rounded-lg outline-none focus:border-indigo-500"></textarea>
+              <span class="text-[10px] text-gray-400 mt-1 block">Adsterra থেকে কপি করা পুরো Social Bar স্ক্রিপ্ট ট্যাগ এখানে পেস্ট করুন।</span>
+            </div>
+
+            <button type="submit" id="saveAdBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition shadow-sm">
+              Save Adsterra Settings
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Tab 7: Users -->
+      <section id="userTab" class="tab-pane hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm min-w-[550px]">
+            <thead class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs uppercase font-bold">
+              <tr>
+                <th class="p-3">Email</th>
+                <th class="p-3">Role</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    /* ========================================================
+       SUPABASE CONFIGURATION (আপনার নিজস্ব ক্রেডেনশিয়াল যুক্ত)
+    ======================================================== */
+    const SUPABASE_URL = "https://fjdqmlspulybrfejlusz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZHFtbHNwdWx5YnJmZWpsdXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MzcyODIsImV4cCI6MjA5MDExMzI4Mn0.K1xRt4rF6FxU8Gs0pleSfBNNRhu-PdjZCrBJH0BGjaw";
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const MASTER_ADMIN_SECRET = "ADMIN@2026";
+    const STORAGE_BUCKET = "cloudshare";
+
+    let allFiles = [];
+    let allCategories = [];
+    let allReports = [];
+    let allRequests = [];
+    let allUsers = [];
+    let isMaintenanceActive = false;
+
+    // Check auth on load
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user) {
+        checkAdminRole(session.user);
+      } else {
+        showLoginScreen();
+      }
+    });
+
+    async function checkAdminRole(user) {
+      const { data, error } = await sb
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (data && data.role === 'admin' && !data.is_banned) {
+        openDashboard(user.email);
+      } else {
+        showLoginScreen();
+      }
+    }
+
+    function showLoginScreen() {
+      document.getElementById('adminLoginScreen').classList.remove('hidden');
+      document.getElementById('adminDashboard').classList.add('hidden');
+    }
+
+    function openDashboard(email) {
+      document.getElementById('adminLoginScreen').classList.add('hidden');
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      initData();
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('admEmail').value.trim();
+      const password = document.getElementById('admPassword').value;
+      const secret = document.getElementById('admSecretKey').value.trim();
+      const btn = document.getElementById('admBtn');
+
+      if (secret !== MASTER_ADMIN_SECRET) {
+        alert("Incorrect Admin Secret Key!");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Authenticating...";
+
+      try {
+        let authUser = null;
+        const { data: signInData, error: signInErr } = await sb.auth.signInWithPassword({ email, password });
+
+        if (signInErr) {
+          // ইউজার না থাকলে নতুন অ্যাকাউন্ট রেজিস্টার হবে
+          const { data: signUpData, error: signUpErr } = await sb.auth.signUp({ email, password });
+          if (signUpErr) throw signUpErr;
+          authUser = signUpData.user;
+        } else {
+          authUser = signInData.user;
+        }
+
+        if (!authUser) throw new Error("Could not authenticate user.");
+
+        // Profiles টেবিলে অ্যাডমিন রোল সংরক্ষণ
+        await sb.from('profiles').upsert({
+          id: authUser.id,
+          email: authUser.email,
+          role: 'admin',
+          is_banned: false,
+          last_admin_login: new Date().toISOString()
+        });
+
+        openDashboard(authUser.email);
+      } catch (err) {
+        alert("Authentication failed: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Authorize & Enter";
+      }
+    }
+
+    async function logoutAdmin() {
+      await sb.auth.signOut();
+      showLoginScreen();
+    }
+
+    async function initData() {
+      await Promise.all([
+        loadCategories(),
+        loadFiles(),
+        loadUsers(),
+        loadReports(),
+        loadRequests(),
+        loadSettings()
+      ]);
+    }
+
+    /* ---------------- DATA LOADERS ---------------- */
+    async function loadCategories() {
+      const { data } = await sb.from('categories').select('*').order('name', { ascending: true });
+      allCategories = data || [];
+      renderCategorySelect();
+      renderCategoryList();
+    }
+
+    async function loadFiles() {
+      const { data } = await sb.from('files').select('*').order('created_at', { ascending: false });
+      allFiles = data || [];
+      renderAdminFiles();
+      updateAnalytics();
+    }
+
+    async function loadUsers() {
+      const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+      allUsers = data || [];
+      renderUsers(allUsers);
+      document.getElementById('statTotalUsers').innerText = allUsers.length;
+    }
+
+    async function loadReports() {
+      const { data } = await sb.from('reports').select('*').order('created_at', { ascending: false });
+      allReports = data || [];
+      renderReports(allReports);
+      document.getElementById('statTotalReports').innerText = allReports.length;
+    }
+
+    async function loadRequests() {
+      const { data } = await sb.from('requests').select('*').order('created_at', { ascending: false });
+      allRequests = data || [];
+      renderRequests(allRequests);
+      document.getElementById('statTotalRequests').innerText = allRequests.length;
+    }
+
+    async function loadSettings() {
+      const { data } = await sb.from('settings').select('*');
+      if (!data) return;
+
+      data.forEach(item => {
+        if (item.key === 'notice') {
+          const notice = item.value || {};
+          document.getElementById('noticeInput').value = notice.text || '';
+          document.getElementById('noticeEnable').checked = !!notice.enabled;
+        } else if (item.key === 'maintenance') {
+          isMaintenanceActive = !!(item.value && item.value.enabled);
+          updateMaintenanceUI();
+        } else if (item.key === 'adsterra') {
+          const ads = item.value || {};
+          const activeEl = document.getElementById('adsterraActive');
+          const linkEl = document.getElementById('adsterraDirectLink');
+          const barEl = document.getElementById('adsterraSocialBar');
+          if (activeEl) activeEl.checked = !!ads.enabled;
+          if (linkEl) linkEl.value = ads.directLink || '';
+          if (barEl) barEl.value = ads.socialBarCode || '';
+        }
+      });
+    }
+
+    /* ---------------- ADSTERRA SETTINGS ---------------- */
+    async function saveAdsterraSettings(e) {
+      e.preventDefault();
+      const enabled = document.getElementById('adsterraActive').checked;
+      const directLink = document.getElementById('adsterraDirectLink').value.trim();
+      const socialBarCode = document.getElementById('adsterraSocialBar').value.trim();
+      const btn = document.getElementById('saveAdBtn');
+
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+
+      try {
+        const { error } = await sb.from('settings').upsert({
+          key: 'adsterra',
+          value: { enabled, directLink, socialBarCode, updatedAt: Date.now() }
+        });
+        if (error) throw error;
+        alert('Adsterra configuration saved successfully!');
+      } catch (err) {
+        alert('Failed to save settings: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Save Adsterra Settings";
+      }
+    }
+
+    /* ---------------- MAINTENANCE ---------------- */
+    function updateMaintenanceUI() {
+      const btn = document.getElementById('maintBtn');
+      const text = document.getElementById('maintText');
+      if (isMaintenanceActive) {
+        btn.className = "px-2.5 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-amber-500 text-slate-900";
+        text.innerText = "Maint: ON";
+      } else {
+        btn.className = "px-2.5 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-gray-700 text-gray-300";
+        text.innerText = "Maint: OFF";
+      }
+    }
+
+    async function toggleMaintenance() {
+      const confirmAction = confirm(isMaintenanceActive ? "Turn OFF Maintenance Mode?" : "Turn ON Maintenance Mode?");
+      if (!confirmAction) return;
+
+      const { error } = await sb.from('settings').upsert({
+        key: 'maintenance',
+        value: { enabled: !isMaintenanceActive, updatedAt: Date.now() }
+      });
+
+      if (!error) {
+        isMaintenanceActive = !isMaintenanceActive;
+        updateMaintenanceUI();
+      }
+    }
+
+    function updateAnalytics() {
+      document.getElementById('statTotalFiles').innerText = allFiles.length;
+      let totalDown = 0;
+      allFiles.forEach(f => { totalDown += Number(f.downloads || 0); });
+      document.getElementById('statTotalDownloads').innerText = totalDown;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('button[id^="tabBtn-"]').forEach(btn => {
+        btn.classList.remove('border-indigo-600', 'text-indigo-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+      });
+
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('tabBtn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-gray-500');
+        activeBtn.classList.add('border-indigo-600', 'text-indigo-600');
+      }
+    }
+
+    function toggleSourceType() {
+      const type = document.querySelector('input[name="sourceType"]:checked').value;
+      if (type === 'storage_upload') {
+        document.getElementById('storageUploadField').classList.remove('hidden');
+        document.getElementById('linkField').classList.add('hidden');
+      } else {
+        document.getElementById('storageUploadField').classList.add('hidden');
+        document.getElementById('linkField').classList.remove('hidden');
+      }
+    }
+
+    function handleFileSelectAuto(input) {
+      if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        document.getElementById('fileSize').value = formatBytes(file.size);
+        const ext = file.name.split('.').pop().toUpperCase();
+        if (!document.getElementById('fileFormat').value) {
+          document.getElementById('fileFormat').value = ext;
+        }
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 KB';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // Helper: Supabase Storage Bucket-এ ফাইল আপলোড
+    async function uploadToSupabaseStorage(file, folder) {
+      const ext = file.name.split('.').pop();
+      const uniqueName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      const { data, error } = await sb.storage
+        .from(STORAGE_BUCKET)
+        .upload(uniqueName, file, { cacheControl: '3600', upsert: false });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = sb.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(uniqueName);
+
+      return publicUrlData.publicUrl;
+    }
+
+    /* ---------------- POST / UPDATE FILE ---------------- */
+    async function handlePostSubmit(e) {
+      e.preventDefault();
+      const editKey = document.getElementById('editKey').value;
+      const title = document.getElementById('fileTitle').value.trim();
+      const category = document.getElementById('fileCategory').value;
+      let size = document.getElementById('fileSize').value.trim();
+      const format = document.getElementById('fileFormat').value.trim();
+      const isVerified = document.getElementById('fileIsVerified').checked;
+      const mirrorUrl = document.getElementById('fileMirrorUrl').value.trim();
+      const desc = document.getElementById('fileDesc').value.trim();
+      const sourceType = document.querySelector('input[name="sourceType"]:checked').value;
+
+      const thumbFileInput = document.getElementById('fileThumbBinary');
+      let thumbUrl = document.getElementById('fileThumbUrl').value.trim();
+      const serverFileInput = document.getElementById('serverFileBinary');
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerText = "Processing & Uploading...";
+
+      try {
+        let finalUrl = "";
+        const existingItem = editKey ? allFiles.find(f => f.id == editKey) : null;
+
+        // ১. থাম্বনেইল ছবি আপলোড
+        if (thumbFileInput.files && thumbFileInput.files.length > 0) {
+          btn.innerText = "Uploading Thumbnail...";
+          thumbUrl = await uploadToSupabaseStorage(thumbFileInput.files[0], 'thumbnails');
+        } else if (!thumbUrl && existingItem) {
+          thumbUrl = existingItem.thumbnail || '';
+        }
+
+        // ২. ফাইল আপলোড বা লিংক ভ্যালিডেশন
+        if (sourceType === 'storage_upload') {
+          if (serverFileInput.files && serverFileInput.files.length > 0) {
+            btn.innerText = "Uploading File to Storage...";
+            finalUrl = await uploadToSupabaseStorage(serverFileInput.files[0], 'files');
+          } else if (existingItem && existingItem.url) {
+            finalUrl = existingItem.url;
+          } else {
+            throw new Error("Please select a file to upload.");
+          }
+        } else {
+          finalUrl = document.getElementById('fileUrl').value.trim();
+          if (!finalUrl && existingItem) finalUrl = existingItem.url;
+          if (!finalUrl) throw new Error("Please provide primary download link.");
+        }
+
+        const payload = {
+          title,
+          category,
+          size: size || (existingItem ? existingItem.size : 'N/A'),
+          format: format || 'FILE',
+          is_verified: isVerified,
+          thumbnail: thumbUrl || '',
+          mirror_url: mirrorUrl || '',
+          description: desc,
+          source_type: sourceType,
+          url: finalUrl,
+          updated_at: new Date().toISOString()
+        };
+
+        if (editKey) {
+          const { error } = await sb.from('files').update(payload).eq('id', editKey);
+          if (error) throw error;
+          alert('Resource updated successfully.');
+        } else {
+          payload.downloads = 0;
+          payload.created_at = new Date().toISOString();
+          const { error } = await sb.from('files').insert([payload]);
+          if (error) throw error;
+          alert('Resource published successfully.');
+        }
+
+        resetFileForm();
+        await loadFiles();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Save & Publish";
+      }
+    }
+
+    function editPost(key) {
+      const file = allFiles.find(f => f.id == key);
+      if (!file) return;
+
+      document.getElementById('editKey').value = file.id;
+      document.getElementById('fileTitle').value = file.title;
+      document.getElementById('fileCategory').value = file.category;
+      document.getElementById('fileSize').value = file.size || '';
+      document.getElementById('fileFormat').value = file.format || '';
+      document.getElementById('fileIsVerified').checked = !!file.is_verified;
+      document.getElementById('fileThumbUrl').value = file.thumbnail || '';
+      document.getElementById('fileMirrorUrl').value = file.mirror_url || '';
+      document.getElementById('fileDesc').value = file.description || '';
+      document.getElementById('fileFormHeading').innerText = "Edit Resource";
+
+      const preservedStatus = document.getElementById('filePreservedStatus');
+
+      if (file.source_type === 'storage_upload') {
+        document.querySelector('input[name="sourceType"][value="storage_upload"]').checked = true;
+        if (preservedStatus) preservedStatus.classList.remove('hidden');
+      } else {
+        document.querySelector('input[name="sourceType"][value="link"]').checked = true;
+        document.getElementById('fileUrl').value = file.url || '';
+        if (preservedStatus) preservedStatus.classList.add('hidden');
+      }
+
+      toggleSourceType();
+      switchTab('fileTab');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deletePost(key) {
+      if (confirm("Delete this resource permanently?")) {
+        const { error } = await sb.from('files').delete().eq('id', key);
+        if (error) alert(error.message);
+        else await loadFiles();
+      }
+    }
+
+    function resetFileForm() {
+      document.getElementById('fileForm').reset();
+      document.getElementById('editKey').value = '';
+      document.getElementById('fileIsVerified').checked = false;
+      document.getElementById('fileFormHeading').innerText = "Post New Resource";
+      const preservedStatus = document.getElementById('filePreservedStatus');
+      if (preservedStatus) preservedStatus.classList.add('hidden');
+      toggleSourceType();
+    }
+
+    function renderAdminFiles() {
+      const tbody = document.getElementById('filesTableBody');
+      tbody.innerHTML = '';
+      allFiles.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-gray-800">
+            ${item.title}
+            ${item.format && item.format.toUpperCase() === 'HTML' ? '<span class="ml-1 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-bold"><i class="fa-solid fa-code"></i> HTML</span>' : ''}
+          </td>
+          <td class="p-3"><span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-medium">${item.category}</span></td>
+          <td class="p-3 font-medium text-xs">${item.size || 'N/A'} / <span class="uppercase font-bold">${item.format || 'FILE'}</span></td>
+          <td class="p-3 text-xs"><i class="fa-solid fa-download text-gray-400 mr-1"></i>${item.downloads || 0}</td>
+          <td class="p-3 text-right">
+            <button onclick="editPost('${item.id}')" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs mr-3">Edit</button>
+            <button onclick="deletePost('${item.id}')" class="text-red-500 hover:text-red-700 font-semibold text-xs">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ---------------- REQUESTS ---------------- */
+    function renderRequests(requests) {
+      const tbody = document.getElementById('requestsTableBody');
+      tbody.innerHTML = '';
+      if (requests.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400 text-xs">No file requests pending.</td></tr>`;
+        return;
+      }
+      requests.forEach(r => {
+        const isDone = r.status === 'Completed';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-gray-800">${r.file_name}</td>
+          <td class="p-3 text-xs text-gray-600">${r.note || '-'}</td>
+          <td class="p-3 text-xs text-gray-500">${r.requested_by}</td>
+          <td class="p-3">
+            <span class="text-[10px] px-2 py-0.5 rounded font-bold uppercase ${isDone ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">
+              ${r.status}
+            </span>
+          </td>
+          <td class="p-3 text-right flex items-center justify-end gap-2">
+            <button onclick="toggleRequestStatus('${r.id}', '${isDone ? 'Pending' : 'Completed'}')" class="text-xs px-2 py-1 rounded font-semibold ${isDone ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}">
+              ${isDone ? 'Mark Pending' : 'Mark Completed'}
+            </button>
+            <button onclick="deleteRequest('${r.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function toggleRequestStatus(id, newStatus) {
+      await sb.from('requests').update({ status: newStatus }).eq('id', id);
+      await loadRequests();
+    }
+
+    async function deleteRequest(id) {
+      if (confirm('Delete this request?')) {
+        await sb.from('requests').delete().eq('id', id);
+        await loadRequests();
+      }
+    }
+
+    /* ---------------- REPORTS ---------------- */
+    function renderReports(reports) {
+      const tbody = document.getElementById('reportsTableBody');
+      tbody.innerHTML = '';
+      if (reports.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400 text-xs">No dead link reports found!</td></tr>`;
+        return;
+      }
+      reports.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-gray-800">${r.file_title || 'File'}</td>
+          <td class="p-3 text-red-600 font-semibold text-xs">${r.reason}</td>
+          <td class="p-3 text-xs text-gray-500">${r.reported_by}</td>
+          <td class="p-3 text-right flex items-center justify-end gap-2">
+            <button onclick="editPost('${r.file_id}')" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-semibold">Fix</button>
+            <button onclick="dismissReport('${r.id}')" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-semibold">Dismiss</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function dismissReport(id) {
+      await sb.from('reports').delete().eq('id', id);
+      await loadReports();
+    }
+
+    /* ---------------- NOTICE BOARD ---------------- */
+    async function handleNoticeSubmit(e) {
+      e.preventDefault();
+      const text = document.getElementById('noticeInput').value.trim();
+      const enabled = document.getElementById('noticeEnable').checked;
+      const { error } = await sb.from('settings').upsert({
+        key: 'notice',
+        value: { text, enabled }
+      });
+      if (!error) alert('Announcement updated!');
+    }
+
+    /* ---------------- CATEGORIES ---------------- */
+    async function addCategory() {
+      const name = document.getElementById('newCatName').value.trim();
+      if (!name) return;
+      const { error } = await sb.from('categories').insert([{ name }]);
+      if (error) alert(error.message);
+      else {
+        document.getElementById('newCatName').value = '';
+        await loadCategories();
+      }
+    }
+
+    async function deleteCategory(id) {
+      if (confirm("Delete this category?")) {
+        await sb.from('categories').delete().eq('id', id);
+        await loadCategories();
+      }
+    }
+
+    function renderCategorySelect() {
+      const select = document.getElementById('fileCategory');
+      select.innerHTML = '';
+      allCategories.forEach(cat => {
+        select.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+      });
+    }
+
+    function renderCategoryList() {
+      const list = document.getElementById('categoriesList');
+      list.innerHTML = '';
+      allCategories.forEach(cat => {
+        const li = document.createElement('li');
+        li.className = "flex justify-between items-center py-2.5";
+        li.innerHTML = `
+          <span class="text-xs sm:text-sm font-medium text-gray-700">${cat.name}</span>
+          <button onclick="deleteCategory('${cat.id}')" class="text-red-500 hover:text-red-700 text-xs"><i class="fa-solid fa-trash"></i></button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    /* ---------------- USERS ---------------- */
+    function renderUsers(users) {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const isBanned = !!u.is_banned;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-medium">${u.email}</td>
+          <td class="p-3"><span class="text-[10px] sm:text-xs px-2 py-0.5 rounded font-bold uppercase ${u.role === 'admin' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}">${u.role || 'user'}</span></td>
+          <td class="p-3"><span class="text-[10px] sm:text-xs px-2 py-0.5 rounded font-semibold ${isBanned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${isBanned ? 'Banned' : 'Active'}</span></td>
+          <td class="p-3 text-right">
+            ${u.role === 'admin' ? '<span class="text-xs text-gray-400 font-semibold">Protected</span>' : `
+              <button onclick="toggleBan('${u.id}', ${!isBanned})" class="text-xs px-2.5 py-1 rounded font-semibold transition ${isBanned ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}">
+                ${isBanned ? 'Unban' : 'Ban'}
+              </button>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function toggleBan(uid, banStatus) {
+      await sb.from('profiles').update({ is_banned: banStatus }).eq('id', uid);
+      await loadUsers();
+    }
+  </script>
+</body>
+</html>
